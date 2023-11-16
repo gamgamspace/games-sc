@@ -36,6 +36,9 @@ let WAVESID = base58'WAVES'
 let WAVESD      = 100000000
 # let USDND       = 1000000
 # let EGGD        = 100
+let GAME_NAME = "Card of the Day"
+let RANDOM_RANGE = 40
+let NUM_BETS = 1
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
@@ -49,7 +52,6 @@ let SERVERADDRESSKEY    = "%s%s__cfg__benzAddress"
 let RANDTIMEFRAMEKEY    = "%s%s__cfg__withdrawTimeFrame"
 let GAMESCOUNTERKEY     = "%s%s__runtime__gameNum"
 let blockedKey          = "%s%s__runtime__contractIsBlocked"
-let reservedAmountsKey  = "%s%s__runtime__reservedAmounts"
 
 func getIntArray(key: String) = {
     let a = this.getStrOrFail(key)
@@ -59,22 +61,18 @@ func getIntArray(key: String) = {
     FOLD<10>(a.split(SEP), [], filler)
 }
 
-func getAssets() = {
-  this.getStrOrFail(allowedAssetsKey).split(SEP)
-}
-
-let ASSETS = getAssets()
+let ASSETS = this.getStrOrFail(allowedAssetsKey).split(SEP)
 let DECIMALS = getIntArray(assetsDecimalsKey)
 let BETDIVIDERS = getIntArray(betDividersKey)
-func RESERVATIONKEYBYSTR(assetStr: String) = "$RESERVED_AMOUNT_" + assetStr
-func RESERVATIONKEY(assetIdx: Int) = RESERVATIONKEYBYSTR(ASSETS[assetIdx])
+
+func keyReservationByAssetStr(assetStr: String) = "$RESERVED_AMOUNT_" + assetStr
+func keyReservationByAssetIdx(assetIdx: Int) = keyReservationByAssetStr(ASSETS[assetIdx])
 
 let MINFEEWAVES = 5 * WAVESD / 1000 #0.005
 
 let idxAssets      = 0
 let idxDecimals    = 1
 let idxDividers    = 2
-let idxReservation = 3
 
 let BET1  =  1
 let BET2  =  2
@@ -82,9 +80,13 @@ let BET4  =  4
 let BET8  =  8
 let BET14 = 14
 
-let RATEMULT = 10000
-let RATE  = 19000 # 1.9000 x RATE_MULT
-let BETS = [BET1, BET2, BET4, BET8, BET14]
+let RATEMULT = 1_0000
+let RATE  = 10_0000 # fixed winAmount of 10 WAVES
+let BETS = [
+#    BET1, 
+    BET2 # fixed bet of 2 WAVES
+#    , BET4, BET8, BET14
+]
 
 let IdxGameState        = 0
 let IdxPlayerChoice     = 1
@@ -131,14 +133,14 @@ func getAssetBalance(assetIdOrUnit: ByteVector|Unit) = {
 
 func increaseReserveAmount(winAmount: Int, assetIdx: Int) = {
     let assetIdStr = ASSETS[assetIdx]
-    let newReservedAmount = RESERVATIONKEY(assetIdx).getIntOr(0) + winAmount
-    if newReservedAmount > assetIdStr.assetIdFromStr().getAssetBalance() then throw("Insufficient funds on Dice Roller account. Transaction was rejected for your safety.") else
+    let newReservedAmount = keyReservationByAssetIdx(assetIdx).getIntOr(0) + winAmount
+    if newReservedAmount > assetIdStr.assetIdFromStr().getAssetBalance() then throw("Insufficient funds on " + GAME_NAME + " account. Transaction was rejected for your safety.") else
     newReservedAmount
 }
 
 func decreaseReservedAmount(gameId: String, assetIdx: Int, winAmount: Int) = {
-    if RESERVATIONKEY(assetIdx).getIntOr(0) - winAmount < 0 then throw("Invalid Dice Roller account state - reserved amount is less than 0") else
-    RESERVATIONKEY(assetIdx).changeInt(-winAmount)
+    if keyReservationByAssetIdx(assetIdx).getIntOr(0) - winAmount < 0 then throw("Invalid " + GAME_NAME + " account state - reserved amount is less than 0") else
+    keyReservationByAssetIdx(assetIdx).changeInt(-winAmount)
 }
 
 func validateAndGetAssetIdx(assetIdStr: String) = {
@@ -152,25 +154,23 @@ func validateBetAndGetWinAmount(bet: Int, internalAssetIdx: Int, playerChoice: S
 
     if (!FOLD<5>(BETS, false, checkAmount)) then throw("Bet amount is not valid") else
     if(parseInt(playerChoice) == unit) then throw("Invalid player's choice") else
-    if dicesCount != 1 then throw("Invalid length of player's choice") else
+    if dicesCount != NUM_BETS then throw("Invalid length of player's choice") else
 
-    (bet * RATE) / RATEMULT
+    fraction(bet, RATE, RATEMULT)
 }
 
-func generateRandChoise(gameId: String, rsaSign: ByteVector) = {
+func generateRandChoice(gameId: String, rsaSign: ByteVector, playerChoice: String) = {
     # verify RSA signature to proof random
     let rsaSigValid = rsaVerify_16Kb(SHA256, toBytes(gameId), rsaSign, RSAPUBLIC)
     if !rsaSigValid then throw("Invalid RSA signature") else
 
-    let rand = toInt(sha256(rsaSign)) % 2
-    let result = if rand < 0 then -1 * rand else rand
+    let rand = toInt(sha256(rsaSign + playerChoice.toBytes())) % RANDOM_RANGE
 
-    result.toString()
+    rand.toString()
 }
 
 func isPlayerWin(playerChoice: String, randChoise: String) = {
-    let s = size(playerChoice)
-    s == 1 && playerChoice == randChoise
+    size(playerChoice) == NUM_BETS && playerChoice == randChoise
 }
 
 func formatGameDataS(gameStatus: String, playerChoice: String, playerPubKey58: String,
@@ -217,25 +217,24 @@ func extractGameData(gameId: String) = {
 }
 
 # tokenDescriptor format:
-# "WAVES:${wavesDecimals}:${wavesBetDivider}:${reservedAmount}_${assetId}:${assetDecimals}:${assetBetDivider}:${reservedAmount}_..."
+# "WAVES:${wavesDecimals}:${wavesBetDivider}_${assetId}:${assetDecimals}:${assetBetDivider}_..."
 @Callable(i)
 func constructorV1(rsaPublic64: String, benzAddress: String, randOracleTimeFrame: Int, tokensDescriptor: String) = {
   if (i.caller != SERVER) then throw("not authorized") else
 
-  func splitter(acc: (List[String], List[String], List[String], List[String]), elem: String) = {
+  func splitter(acc: (List[String], List[String], List[String]), elem: String) = {
     let tokList = elem.split(":")
     if (tokList.size() != 4) then throw("Invalid asset record") else
     (acc._1 :+ tokList[idxAssets], acc._2 :+ tokList[idxDecimals], acc._3 :+ tokList[idxDividers])
   }
-  let r = FOLD<10>(tokensDescriptor.split_4C("_"), ([], [], [], []), splitter)
+  let r = FOLD<10>(tokensDescriptor.split_4C("_"), ([], [], []), splitter)
 
   [StringEntry(RSAPUBLIC64KEY, rsaPublic64),
     StringEntry(SERVERADDRESSKEY, benzAddress),
     IntegerEntry(RANDTIMEFRAMEKEY, randOracleTimeFrame),
-    StringEntry(allowedAssetsKey, makeString_2C(r._1, "_")),
-    StringEntry(assetsDecimalsKey, makeString(r._2, "_")),
-    StringEntry(betDividersKey, makeString(r._3, "_")),
-    StringEntry(reservedAmountsKey, makeString_2C(r._4, ":")) # keys usually contain "_", so we use ":"
+    StringEntry(allowedAssetsKey, makeString_2C(r._1, SEP)),
+    StringEntry(assetsDecimalsKey, makeString(r._2, SEP)),
+    StringEntry(betDividersKey, makeString(r._3, SEP))
   ]
 }
 
@@ -269,7 +268,7 @@ func bet(playerChoice: String) = {
     let gameData = formatGameData(
             STATESUBMITTED, playerChoice, playerPubKey58, height, winAmount, internalAssetIdx, "")
 
-    [IntegerEntry(RESERVATIONKEY(internalAssetIdx), increaseReserveAmount(winAmount, internalAssetIdx)),
+    [IntegerEntry(keyReservationByAssetIdx(internalAssetIdx), increaseReserveAmount(winAmount, internalAssetIdx)),
       GAMESCOUNTERKEY.incrementInt(),
       StringEntry(gameId, gameData),
       ScriptTransfer(SERVER, commission, feePmt.assetId)]
@@ -300,7 +299,7 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
 
     # if oracle doesn't initiate withdraw in specified timeframe then player will be a winner
     let winByTimeout = height - startedHeight > RANDORACLETIMEFRAME
-    let randChoise = if (winByTimeout) then playerChoice else generateRandChoise(gameId, rsaSign)
+    let randChoise = if (winByTimeout) then playerChoice else generateRandChoice(gameId, rsaSign, playerChoice)
 
     let playerWin     = isPlayerWin(playerChoice, randChoise)
     let newGameStatus = if (playerWin) then STATEWON else STATELOST
@@ -319,11 +318,11 @@ func verify() = {
         case ttx:TransferTransaction => {
             let assetIdx = validateAndGetAssetIdx(assetIdToStr(ttx.assetId))
             # do not allow to transfer reserved funds
-            getAssetBalance(ttx.assetId) - ttx.amount >= RESERVATIONKEY(assetIdx).getIntOr(0)
+            getAssetBalance(ttx.assetId) - ttx.amount >= keyReservationByAssetIdx(assetIdx).getIntOr(0)
         }
         case stx:SetScriptTransaction => {
             # allow to modify script only in case if all reserved amounts are 0
-            func checker(acc: Boolean, el: String) = acc && (RESERVATIONKEYBYSTR(el).getIntOr(0) == 0)
+            func checker(acc: Boolean, asset: String) = acc && (keyReservationByAssetStr(asset).getIntOr(0) == 0)
 
             FOLD<10>(ASSETS, true, checker)
         }
