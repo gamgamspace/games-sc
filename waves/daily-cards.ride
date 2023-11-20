@@ -81,7 +81,7 @@ let BET8  =  8
 let BET14 = 14
 
 let RATEMULT = 1_0000
-let RATE  = 10_0000 # fixed winAmount of 10 WAVES
+let RATE  = 5_0000 # fixed winAmount of 2*5=10 WAVES
 let BETS = [
 #    BET1, 
     BET2 # fixed bet of 2 WAVES
@@ -150,7 +150,7 @@ func validateAndGetAssetIdx(assetIdStr: String) = {
 
 func validateBetAndGetWinAmount(bet: Int, internalAssetIdx: Int, playerChoice: String) = {
     let dicesCount = size(playerChoice)
-    func checkAmount(a:Boolean, x:Int) = a || (bet == x * DECIMALS[internalAssetIdx] / BETDIVIDERS[internalAssetIdx])
+    func checkAmount(a: Boolean, x: Int) = a || (bet == x * DECIMALS[internalAssetIdx] / BETDIVIDERS[internalAssetIdx])
 
     if (!FOLD<5>(BETS, false, checkAmount)) then throw("Bet amount is not valid") else
     if(parseInt(playerChoice) == unit) then throw("Invalid player's choice") else
@@ -170,7 +170,7 @@ func generateRandChoice(gameId: String, rsaSign: ByteVector, playerChoice: Strin
 }
 
 func isPlayerWin(playerChoice: String, randChoise: String) = {
-    size(playerChoice) == NUM_BETS && playerChoice == randChoise
+    size(playerChoice) == NUM_BETS && randChoise == toString(RANDOM_RANGE - 1)
 }
 
 func formatGameDataS(gameStatus: String, playerChoice: String, playerPubKey58: String,
