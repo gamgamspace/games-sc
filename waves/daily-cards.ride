@@ -39,6 +39,7 @@ let WAVESD      = 100000000
 let GAME_NAME = "Card of the Day"
 let RANDOM_RANGE = 40
 let NUM_BETS = 1
+let WIN_CARD = toString(RANDOM_RANGE - 1)
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
@@ -170,7 +171,7 @@ func generateRandChoice(gameId: String, rsaSign: ByteVector, playerChoice: Strin
 }
 
 func isPlayerWin(playerChoice: String, randChoise: String) = {
-    size(playerChoice) == NUM_BETS && randChoise == toString(RANDOM_RANGE - 1)
+    playerChoice == randChoise
 }
 
 func formatGameDataS(gameStatus: String, playerChoice: String, playerPubKey58: String,
@@ -199,12 +200,12 @@ func formatGameData(gameStatus: String, playerChoice: String, playerPubKey58: St
 
 func finishGameData(origGameData: List[String], gameStatus: String, rand: String, winByTimeout: Boolean) = {
   let finishGameData = formatGameDataS(gameStatus,
-      origGameData[IdxPlayerChoice],
+      rand,
       origGameData[IdxPlayerPubKey58],
       origGameData[IdxStartedHeight],
       origGameData[IdxWinAmount],
       origGameData[IdxAssetId],
-      rand)
+      WIN_CARD)
   if (winByTimeout) then finishGameData + "_TIMEOUT" else finishGameData
 }
 
@@ -299,9 +300,9 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
 
     # if oracle doesn't initiate withdraw in specified timeframe then player will be a winner
     let winByTimeout = height - startedHeight > RANDORACLETIMEFRAME
-    let randChoise = if (winByTimeout) then playerChoice else generateRandChoice(gameId, rsaSign, playerChoice)
+    let randChoise = if (winByTimeout) then WIN_CARD else generateRandChoice(gameId, rsaSign, playerChoice)
 
-    let playerWin     = isPlayerWin(playerChoice, randChoise)
+    let playerWin     = isPlayerWin(randChoise, WIN_CARD)
     let newGameStatus = if (playerWin) then STATEWON else STATELOST
     let newGameData   = finishGameData(gameData, newGameStatus, randChoise, winByTimeout)
 
