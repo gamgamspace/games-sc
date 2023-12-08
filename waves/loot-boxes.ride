@@ -34,12 +34,9 @@
 let SEP = "__"
 let WAVESID = base58'WAVES'
 let WAVESD      = 1_0000_0000
-# let USDND       = 1000000
-# let EGGD        = 100
 let GAME_NAME = "Xmas Tree"
 let RANDOM_RANGE = 5
 let NUM_BETS = 1
-#let WIN_CARD = toString(RANDOM_RANGE - 1)
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
