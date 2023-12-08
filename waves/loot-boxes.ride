@@ -156,7 +156,7 @@ func validateBetAndGetWinAmount(bet: Int, internalAssetIdx: Int, playerChoice: S
 
     if (!FOLD<5>(BETS, false, checkAmount)) then throw("Bet amount is not valid") else
     if(parseInt(playerChoice) == unit) then throw("Invalid player's choice") else
-    # if dicesCount != NUM_BETS then throw("Invalid length of player's choice") else
+    if dicesCount != NUM_BETS then throw("Invalid length of player's choice") else
 
     fraction(bet, RATE, RATEMULT)
 }
