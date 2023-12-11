@@ -37,9 +37,9 @@ let WAVESD      = 100000000
 # let USDND       = 1000000
 # let EGGD        = 100
 let GAME_NAME = "Card of the Day"
-let RANDOM_RANGE = 40
+let RANDOM_RANGE = 40+6+5 # +6 additional +5 Christmas
 let NUM_BETS = 1
-let WIN_CARD = toString(RANDOM_RANGE - 1)
+let WIN_CARD = "0"
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
