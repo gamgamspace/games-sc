@@ -38,6 +38,32 @@ let GAME_NAME = "Xmas Tree"
 let RANDOM_RANGE = 5
 let NUM_BETS = 1
 
+#    |  /~~~~ y[i] ~~~\ A|
+#    | / x0[i]   x1[i] \ |
+#    |/                 \|
+#    |                   |
+#   /|                   |\
+#  / |                   | \
+# /__|_______y[i+1]______|A'\
+# x0[i+1]                 x1[i+1]
+
+let HOR_LINES = [ # x0, x1, y
+    [491, 506,  44], # 0
+    [455, 542, 120], # 1
+    [404, 596, 166], # 2
+    [441, 556, 177], # 3
+    [387, 620, 232], # 4
+    [410, 592, 244], # 5
+    [329, 665, 321], # 6
+    [370, 666, 337], # 7
+    [355, 645, 349], # 8
+    [313, 692, 384], # 9
+    [289, 682, 405], # 10
+    [324, 657, 461], # 11
+    [450, 575, 525], # 12
+    [505, 505, 532]  # 13
+]
+
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getBoolOrFail(address: Address, key: String) = address.getBoolean(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
@@ -51,6 +77,7 @@ let RANDTIMEFRAMEKEY    = "%s%s__cfg__withdrawTimeFrame"
 let GAMESCOUNTERKEY     = "%s%s__runtime__gameNum"
 let blockedKey          = "%s%s__runtime__contractIsBlocked"
 let reservedAmountsKey  = "%s%s__runtime__reservedAmounts"
+func keyCoords(gameId: String) = "%s%s%s__runtime__coordsByGameId__" + gameId
 
 func getIntArray(key: String) = {
     let a = this.getStrOrFail(key)
@@ -308,7 +335,7 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     [StringEntry(gameId, newGameData),
       decreaseReservedAmount(gameId, assetIdx, winAmount)]
     ++
-    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] else []
+    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] else [StringEntry(keyCoords(gameId), "500_280")]
 }
 
 @Verifier(tx)
