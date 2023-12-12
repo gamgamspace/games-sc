@@ -215,7 +215,7 @@ func getCoords(gameId: String, rsaSign: ByteVector) = {
     let h4 = (bottom[2] - top[2]) * M4
     let my4 = (top[2] + bottom[2]) * HALF
     let randX4 = mx04 + toInt(sha256(rsaSign + j.toBytes())) % (mx14 - mx04)
-    let randY4 = top[2] + toInt(sha256(rsaSign + randX4.toBytes())) % h4
+    let randY4 = top[2] * M4 + toInt(sha256(rsaSign + randX4.toBytes())) % h4
     # check whether point is outside of trapezoid
     # y = kx+b; x = (y-b) / k
     # left: k = (bottom[2]-top[2]) / (bottom[0]-top[0]); b = (top[2] * bottom[0] - top[0] * bottom[2]) / (bottom[0]-top[0])
