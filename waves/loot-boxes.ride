@@ -251,7 +251,7 @@ func constructorV1(rsaPublic64: String, benzAddress: String, randOracleTimeFrame
 
   func splitter(acc: (List[String], List[String], List[String]), elem: String) = {
     let tokList = elem.split(":")
-    if (tokList.size() != 4) then throw("Invalid asset record") else
+    if (tokList.size() != 3) then throw("Invalid asset record") else
     (acc._1 :+ tokList[idxAssets], acc._2 :+ tokList[idxDecimals], acc._3 :+ tokList[idxDividers])
   }
   let r = FOLD<10>(tokensDescriptor.split_4C("_"), ([], [], []), splitter)
