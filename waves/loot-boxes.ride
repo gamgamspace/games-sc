@@ -204,7 +204,7 @@ func getCoords(gameId: String, rsaSign: ByteVector) = {
     func check(acc: (Int, Int, Int), area: Int) = {
         let i = acc._1
         let newArea = acc._2 + area
-        (i + 1, newArea, if (newArea > rand) then i else acc._3)
+        (i + 1, newArea, if (acc._3 < 0 && newArea > rand) then i else acc._3)
     }
     let j = (FOLD<14>(areas, (0, 0, -1), check))._3
     let top = HOR_LINES[j]
