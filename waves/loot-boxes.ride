@@ -191,12 +191,13 @@ func getCoords(gameId: String, rsaSign: ByteVector) = {
     # find trapezoid areas and total area
     func calcAreas(acc: (List[Int], Int, Int), ignored: List[Int]) = {
         let i = acc._3
+        if (i == 14) then acc else
         let top = HOR_LINES[i]
         let bottom = HOR_LINES[i + 1]
         let area4 = (top[1] - top[0] + bottom[1] - bottom[0]) * (bottom[2] - top[2]) * 5000
         (acc._1 :+ area4, acc._2 + area4, acc._3 + 1)
     }
-    let (areas, totalArea) = FOLD<14>(HOR_LINES, ([], 0, 0), calcAreas)
+    let (areas, totalArea) = FOLD<15>(HOR_LINES, ([], 0, 0), calcAreas)
     let rand = toInt(sha256(rsaSign)) % totalArea
     # choose trapezoid
     # acc: (counter, areaSoFar, resultIndex)
