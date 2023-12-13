@@ -198,7 +198,7 @@ func getCoords(gameId: String, rsaSign: ByteVector) = {
         (acc._1 :+ area4, acc._2 + area4, acc._3 + 1)
     }
     let (areas, totalArea) = FOLD<15>(HOR_LINES, ([], 0, 0), calcAreas)
-    let rand = toInt(sha256(rsaSign)) % totalArea
+    let rand = toInt(sha256(rsaSign + gameId.toBytes())) % totalArea
     # choose trapezoid
     # acc: (counter, areaSoFar, resultIndex)
     func check(acc: (Int, Int, Int), area: Int) = {
