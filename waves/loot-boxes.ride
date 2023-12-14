@@ -403,7 +403,7 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
 
     [StringEntry(gameId, newGameData),
       decreaseReservedAmount(gameId, assetIdx, winAmount),
-      StringEntry(historyKey, newHistory)]
+      StringEntry(historyKey, "")]
     ++
     if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] else []
 }
