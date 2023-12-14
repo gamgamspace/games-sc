@@ -402,10 +402,9 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     let newHistory = (if (oldHistory == "") then "" else (oldHistory + "_")) + makeString([x.toString(), y.toString(), prizeIndex.toString()], ":")
 
     [StringEntry(gameId, newGameData),
-      decreaseReservedAmount(gameId, assetIdx, winAmount),
-      StringEntry(historyKey, "")]
+      decreaseReservedAmount(gameId, assetIdx, winAmount)]
     ++
-    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] else []
+    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] else [StringEntry(historyKey, newHistory)]
 }
 
 @Verifier(tx)
