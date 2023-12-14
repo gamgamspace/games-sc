@@ -81,7 +81,7 @@ let BET8  =  8
 let BET14 = 14
 
 let RATEMULT = 1_0000
-let RATE  = 4_0000 # fixed winAmount of 2*4=8 WAVES
+let RATE  = 3_0000 # fixed winAmount of 2*3=6 WAVES
 let BETS = [
 #    BET1, 
     BET2 # fixed bet of 2 WAVES
