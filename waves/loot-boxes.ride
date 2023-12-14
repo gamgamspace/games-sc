@@ -37,6 +37,7 @@ let WAVESD      = 1_0000_0000
 let GAME_NAME = "Xmas Tree"
 let RANDOM_RANGE = 5
 let NUM_BETS = 1
+let MAX_DECORATIONS = 15
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
@@ -233,6 +234,10 @@ func getCoords(gameId: String, rsaSign: ByteVector) = {
     } else [randX4, randY4]
 }
 
+func getDecorationIndex(gameId: String, rsaSign: ByteVector) = {
+    toInt(sha256(gameId.toBytes() + rsaSign)) % MAX_DECORATIONS
+}
+
 func generateRandChoice(gameId: String, rsaSign: ByteVector) = {
     # verify RSA signature to proof random
     let rsaSigValid = rsaVerify_16Kb(SHA256, toBytes(gameId), rsaSign, RSAPUBLIC)
@@ -249,7 +254,7 @@ func isPlayerWin(playerChoice: String, randChoise: String) = {
 }
 
 func formatGameDataS(gameStatus: String, playerChoice: String, playerPubKey58: String,
-                    startedHeight: String, winAmount: String, assetIdx: String, randOrEmpty: String, xCoord: String, yCoord: String) = {
+                    startedHeight: String, winAmount: String, assetIdx: String, randOrEmpty: String, xCoord: String, yCoord: String, prizeIndex: String) = {
     makeString([
         gameStatus,
         playerChoice,
@@ -259,12 +264,13 @@ func formatGameDataS(gameStatus: String, playerChoice: String, playerPubKey58: S
         assetIdx,
         (if randOrEmpty == "" then "" else randOrEmpty),
         xCoord,
-        yCoord],
+        yCoord, 
+        prizeIndex],
     "_")
 }
 
 func formatGameData(gameStatus: String, playerChoice: String, playerPubKey58: String,
-                    startedHeight: Int, winAmount: Int, assetIdx: Int, randOrEmpty: String, xCoord: Int, yCoord: Int) = {
+                    startedHeight: Int, winAmount: Int, assetIdx: Int, randOrEmpty: String, xCoord: Int, yCoord: Int, prizeIndex: Int) = {
   formatGameDataS(gameStatus,
       playerChoice,
       playerPubKey58,
@@ -273,10 +279,11 @@ func formatGameData(gameStatus: String, playerChoice: String, playerPubKey58: St
       assetIdx.toString(),
       randOrEmpty,
       xCoord.toString(),
-      yCoord.toString())
+      yCoord.toString(),
+      prizeIndex.toString())
 }
 
-func finishGameData(origGameData: List[String], gameStatus: String, rand: String, winByTimeout: Boolean, xCoord: Int, yCoord: Int) = {
+func finishGameData(origGameData: List[String], gameStatus: String, rand: String, winByTimeout: Boolean, xCoord: Int, yCoord: Int, prizeIndex: Int) = {
   let finishGameData = formatGameDataS(gameStatus,
       origGameData[IdxPlayerChoice],
       origGameData[IdxPlayerPubKey58],
@@ -285,7 +292,8 @@ func finishGameData(origGameData: List[String], gameStatus: String, rand: String
       origGameData[IdxAssetId],
       rand,
       xCoord.toString(),
-      yCoord.toString())
+      yCoord.toString(),
+      prizeIndex.toString())
   if (winByTimeout) then finishGameData + "_TIMEOUT" else finishGameData
 }
 
@@ -347,7 +355,7 @@ func bet(playerChoice: String) = {
 
     let playerPubKey58 = toBase58String(i.callerPublicKey)
     let gameData = formatGameData(
-            STATESUBMITTED, playerChoice, playerPubKey58, height, winAmount, internalAssetIdx, "", -1, -1)
+            STATESUBMITTED, playerChoice, playerPubKey58, height, winAmount, internalAssetIdx, "", -1, -1, -1)
 
     [IntegerEntry(keyReservationByAssetIdx(internalAssetIdx), increaseReserveAmount(winAmount, internalAssetIdx)),
       GAMESCOUNTERKEY.incrementInt(),
@@ -385,7 +393,8 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     let playerWin     = isPlayerWin(playerChoice, randChoice)
     let newGameStatus = if (playerWin) then STATEWON else STATELOST
     let coords = if (playerWin) then [-M4, -M4] else getCoords(gameId, rsaSign)
-    let newGameData   = finishGameData(gameData, newGameStatus, randChoice, winByTimeout, coords[0] / M4, coords[1] / M4)
+    let prizeIndex = if (playerWin) then -1 else getDecorationIndex(gameId, rsaSign)
+    let newGameData   = finishGameData(gameData, newGameStatus, randChoice, winByTimeout, coords[0] / M4, coords[1] / M4, prizeIndex)
 
     [StringEntry(gameId, newGameData),
       decreaseReservedAmount(gameId, assetIdx, winAmount)]
