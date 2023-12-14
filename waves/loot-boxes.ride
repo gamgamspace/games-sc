@@ -52,6 +52,7 @@ let RANDTIMEFRAMEKEY    = "%s%s__cfg__withdrawTimeFrame"
 let GAMESCOUNTERKEY     = "%s%s__runtime__gameNum"
 let blockedKey          = "%s%s__runtime__contractIsBlocked"
 let reservedAmountsKey  = "%s%s__runtime__reservedAmounts"
+let historyKey          = "%s%s__runtime__decorationsHistory"
 
 func getIntArray(key: String) = {
     let a = this.getStrOrFail(key)
@@ -394,10 +395,15 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     let newGameStatus = if (playerWin) then STATEWON else STATELOST
     let coords = if (playerWin) then [-M4, -M4] else getCoords(gameId, rsaSign)
     let prizeIndex = if (playerWin) then -1 else getDecorationIndex(gameId, rsaSign)
-    let newGameData   = finishGameData(gameData, newGameStatus, randChoice, winByTimeout, coords[0] / M4, coords[1] / M4, prizeIndex)
+    let x = coords[0] / M4
+    let y = coords[1] / M4
+    let newGameData = finishGameData(gameData, newGameStatus, randChoice, winByTimeout, x, y, prizeIndex)
+    let oldHistory = getString(historyKey).valueOrElse("")
+    let newHistory = (if (oldHistory == "") then "" else (oldHistory + "_")) + makeString([x.toString(), y.toString(), prizeIndex.toString()], ":")
 
     [StringEntry(gameId, newGameData),
-      decreaseReservedAmount(gameId, assetIdx, winAmount)]
+      decreaseReservedAmount(gameId, assetIdx, winAmount),
+      StringEntry(historyKey, newHistory)]
     ++
     if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] else []
 }
