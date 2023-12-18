@@ -37,7 +37,7 @@ let WAVESD      = 1_0000_0000
 let GAME_NAME = "Xmas Tree"
 let RANDOM_RANGE = 5
 let NUM_BETS = 1
-let MAX_DECORATIONS = 15
+let MAX_DECORATIONS = 28
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
