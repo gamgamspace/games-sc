@@ -403,10 +403,34 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     let oldHistory = getString(historyKey).valueOrElse("")
     let newHistory = (if (oldHistory == "") then "" else (oldHistory + "_")) + makeString([x.toString(), y.toString(), prizeIndex.toString()], ":")
 
+    let bin = gameId.fromBase58String()
+    # baseFrequency = 0.005..0.080 (16 values = 4 bits)
+    let freq = (bin.take(8).toInt() % 16 + 1) * 5
+    let freqStr = if (freq == 5) then "05" else freq.toString()
+    # numOctaves = 1..4 (4 values = 2 bits)
+    let oct = toString(bin.drop(8).take(8).toInt() % 4 + 1)
+    # seed = 32 bits
+    let seed = (bin.drop(16).take(8).toInt() % 1000000000).toString()
+    # fill color = 24 bits
+    let color = (bin.drop(24).take(8).toInt() % 16777216).toBytes().toBase16String().takeRight(6)
+
+    let description = "<svg viewBox='0 0 512 512'>" +
+        "<filter id='n' x='0' y='0' width='512' height='512'>" +
+        "<feTurbulence baseFrequency='0.0" + freqStr + "' numOctaves='" + oct + "' seed='" + seed + "'/>" +
+        "</filter>" +
+        "<rect x='0' y='0' width='512' height='512' fill='#" + color + "'/>" +
+        "<rect x='0' y='0' width='512' height='512' filter='url(#n)'/>" +
+        "<path fill='#00f' d='M450 400 l50 50 l-50 50 l-50 -50z'/>" +
+        "</svg>"
+
+    let issue = Issue("XMAS-NFT", description, 1, 0, false)
+    let id = calculateAssetId(issue)
+
     [StringEntry(gameId, newGameData),
       decreaseReservedAmount(gameId, assetIdx, winAmount)]
     ++
-    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] else [StringEntry(historyKey, newHistory)]
+    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] 
+    else [StringEntry(historyKey, newHistory), issue, ScriptTransfer(playerAddress, 1, id)]
 }
 
 @Verifier(tx)
