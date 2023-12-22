@@ -418,9 +418,7 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
             1, "", "", ""
         ], []).exactAs[String]
         [ScriptTransfer(playerAddress, 1, mintedId.fromBase58String()), IntegerEntry(ipfsCountKey, ipfsCount + 1)]
-    } else {
-        []
-    }
+    } else []
 
     [StringEntry(gameId, newGameData),
       decreaseReservedAmount(gameId, assetIdx, winAmount)]
