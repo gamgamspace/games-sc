@@ -39,7 +39,6 @@ let RANDOM_RANGE = 5
 let NUM_BETS = 1
 let MAX_DECORATIONS = 28
 let puzzleMarket = "3PFQjjDMiZKQZdu5JqTHD7HwgSXyp9Rw9By".addressFromStringValue()
-let MAX_NFTS = 100
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
@@ -55,8 +54,8 @@ let GAMESCOUNTERKEY     = "%s%s__runtime__gameNum"
 let blockedKey          = "%s%s__runtime__contractIsBlocked"
 let reservedAmountsKey  = "%s%s__runtime__reservedAmounts"
 let historyKey          = "%s%s__runtime__decorationsHistory"
-let ipfsIdsKey          = "%s%s__runtime__nftIds" # ipfs ids separated by _
 let ipfsCountKey        = "%s%s__runtime__nftCounter"
+func keyNftId(num: Int) = "%s%d__nft__" + num.toString()
 
 func getIntArray(key: String) = {
     let a = this.getStrOrFail(key)
@@ -408,10 +407,8 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     let newHistory = (if (oldHistory == "") then "" else (oldHistory + "_")) + makeString([x.toString(), y.toString(), prizeIndex.toString()], ":")
 
     let ipfsCount = getInteger(ipfsCountKey).valueOrElse(0)
-    let ipfsIdsStr = getString(ipfsIdsKey).valueOrElse("")
-    let ipfsIds = if (ipfsIdsStr == "") then [] else ipfsIdsStr.split_51C("_")
-    let nftActions = if (!playerWin && ipfsCount < MAX_NFTS && ipfsCount < ipfsIds.size()) then {
-        let ipfsId = ipfsIds[ipfsCount]
+    let ipfsId = getString(keyNftId(ipfsCount)).valueOrElse("")
+    let nftActions = if (!playerWin && ipfsId != "") then {
         strict mintedId = puzzleMarket.invoke("mint", [
             "XMAS-TOY", 
             "christmas-tree.gamgam.space",
