@@ -55,7 +55,8 @@ let blockedKey          = "%s%s__runtime__contractIsBlocked"
 let reservedAmountsKey  = "%s%s__runtime__reservedAmounts"
 let historyKey          = "%s%s__runtime__decorationsHistory"
 let ipfsCountKey        = "%s%s__runtime__nftCounter"
-func keyNftId(num: Int) = "%s%d__nft__" + num.toString()
+let NFT_KEY_PART        = "%s%d__nft__"
+func keyNftId(num: Int) = NFT_KEY_PART + num.toString()
 
 func getIntArray(key: String) = {
     let a = this.getStrOrFail(key)
@@ -445,6 +446,17 @@ func verify() = {
         }
         case itx:InvokeScriptTransaction => {
             itx.dApp == this && itx.function == "constructorV1"
+        }
+        case dtx:DataTransaction => {
+            if (dtx.sender == this) then {
+                func check(acc: Boolean, item: Any) = {
+                    match item {
+                        case it: IntegerEntry => (acc && it.key.contains(NFT_KEY_PART))
+                        case _ => throw("List[IntegerEntry] only!")
+                    }
+                }
+                FOLD<100>(dtx.data, true, check)
+            } else false
         }
         case _ => false
     }
