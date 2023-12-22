@@ -38,6 +38,8 @@ let GAME_NAME = "Xmas Tree"
 let RANDOM_RANGE = 5
 let NUM_BETS = 1
 let MAX_DECORATIONS = 28
+let puzzleMarket = "3PFQjjDMiZKQZdu5JqTHD7HwgSXyp9Rw9By".addressFromStringValue()
+let MAX_NFTS = 100
 
 func getStrOrFail(address: Address, key: String) = address.getString(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
 func getIntOrFail(address: Address, key: String) = address.getInteger(key).valueOrErrorMessage(makeString(["mandatory ", address.toString(), ".", key, " is not defined"], ""))
@@ -53,6 +55,8 @@ let GAMESCOUNTERKEY     = "%s%s__runtime__gameNum"
 let blockedKey          = "%s%s__runtime__contractIsBlocked"
 let reservedAmountsKey  = "%s%s__runtime__reservedAmounts"
 let historyKey          = "%s%s__runtime__decorationsHistory"
+let ipfsIdsKey          = "%s%s__runtime__nftIds" # ipfs ids separated by _
+let ipfsCountKey        = "%s%s__runtime__nftCounter"
 
 func getIntArray(key: String) = {
     let a = this.getStrOrFail(key)
@@ -403,34 +407,30 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     let oldHistory = getString(historyKey).valueOrElse("")
     let newHistory = (if (oldHistory == "") then "" else (oldHistory + "_")) + makeString([x.toString(), y.toString(), prizeIndex.toString()], ":")
 
-    let bin = gameId.fromBase58String()
-    # baseFrequency = 0.005..0.080 (16 values = 4 bits)
-    let freq = (bin.take(8).toInt() % 16 + 1) * 5
-    let freqStr = if (freq == 5) then "05" else freq.toString()
-    # numOctaves = 1..4 (4 values = 2 bits)
-    let oct = toString(bin.drop(8).take(8).toInt() % 4 + 1)
-    # seed = 32 bits
-    let seed = (bin.drop(16).take(8).toInt() % 1000000000).toString()
-    # fill color = 24 bits
-    let color = (bin.drop(24).take(8).toInt() % 16777216).toBytes().toBase16String().takeRight(6)
-
-    let description = "<svg viewBox='0 0 512 512'>" +
-        "<filter id='n' x='0' y='0' width='512' height='512'>" +
-        "<feTurbulence baseFrequency='0.0" + freqStr + "' numOctaves='" + oct + "' seed='" + seed + "'/>" +
-        "</filter>" +
-        "<rect x='0' y='0' width='512' height='512' fill='#" + color + "'/>" +
-        "<rect x='0' y='0' width='512' height='512' filter='url(#n)'/>" +
-        "<path fill='#00f' d='M450 400 l50 50 l-50 50 l-50 -50z'/>" +
-        "</svg>"
-
-    let issue = Issue("XMAS-NFT", description, 1, 0, false)
-    let id = calculateAssetId(issue)
+    let ipfsCount = getInteger(ipfsCountKey).valueOrElse(0)
+    let ipfsIdsStr = getString(ipfsIdsKey).valueOrElse("")
+    let ipfsIds = if (ipfsIdsStr == "") then [] else ipfsIdsStr.split_51C("_")
+    let nftActions = if (!playerWin && ipfsCount < MAX_NFTS && ipfsCount < ipfsIds.size()) then {
+        let ipfsId = ipfsIds[ipfsCount]
+        strict mintedId = puzzleMarket.invoke("mint", [
+            "XMAS-TOY", 
+            "christmas-tree.gamgam.space",
+            "GamGam.Space Xmas Toys",
+            "https://ipfs.io/ipfs/" + ipfsId + "/display.jpg",
+            "https://ipfs.io/ipfs/" + ipfsId + "/display.jpg",
+            1, "", "", ""
+        ], []).exactAs[String]
+        [ScriptTransfer(playerAddress, 1, mintedId.fromBase58String()), IntegerEntry(ipfsCountKey, ipfsCount + 1)]
+    } else {
+        []
+    }
 
     [StringEntry(gameId, newGameData),
       decreaseReservedAmount(gameId, assetIdx, winAmount)]
+    ++ nftActions
     ++
-    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))] 
-    else [StringEntry(historyKey, newHistory), issue, ScriptTransfer(playerAddress, 1, id)]
+    if (playerWin) then [ScriptTransfer(playerAddress, winAmount, assetIdFromStr(ASSETS[assetIdx]))]
+    else [StringEntry(historyKey, newHistory)]
 }
 
 @Verifier(tx)
