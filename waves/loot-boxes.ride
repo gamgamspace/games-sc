@@ -412,7 +412,7 @@ func withdraw(gameId: String, rsaSign: ByteVector) = {
     let nftActions = if (!playerWin && ipfsId != "") then {
         strict mintedId = puzzleMarket.invoke("mint", [
             "XMAS-TOY", 
-            "christmas-tree.gamgam.space",
+            "xmas.gamgam.space",
             "GamGam.Space Xmas Toys",
             "https://ipfs.io/ipfs/" + ipfsId + "/display.jpg",
             "https://ipfs.io/ipfs/" + ipfsId + "/display.jpg",
