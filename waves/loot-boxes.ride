@@ -448,15 +448,13 @@ func verify() = {
             itx.dApp == this && itx.function == "constructorV1"
         }
         case dtx:DataTransaction => {
-            if (dtx.sender == this) then {
-                func check(acc: Boolean, item: Any) = {
-                    match item {
-                        case it: IntegerEntry => (acc && it.key.contains(NFT_KEY_PART))
-                        case _ => throw("List[IntegerEntry] only!")
-                    }
+            func check(acc: Boolean, item: Any) = {
+                match item {
+                    case it: IntegerEntry => (acc && it.key.contains(NFT_KEY_PART))
+                    case _ => throw("List[IntegerEntry] only!")
                 }
-                FOLD<100>(dtx.data, true, check)
-            } else false
+            }
+            FOLD<100>(dtx.data, true, check)
         }
         case _ => false
     }
